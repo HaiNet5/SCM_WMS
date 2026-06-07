@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operator Desk - Real-Time Barcode Parser</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 min-h-screen flex flex-col">
+
+    <nav class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm">
+        <div class="flex items-center space-x-3">
+            <div class="bg-indigo-600 text-white font-bold p-2 rounded-lg text-sm tracking-wider">OPS-DEVICE</div>
+            <h1 class="text-xl font-bold text-slate-900">GS1 Parser Terminal</h1>
+        </div>
+       
+    </nav>
+
+    <main class="flex-grow max-w-5xl w-full mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <div class="md:col-span-1 space-y-6">
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">Expected GS1 Protocol</h2>
+                <p class="text-sm text-slate-600 mb-4 leading-relaxed">
+                    This engine reads and parses live data fields directly out of uploaded 1D linear barcodes (**GS1-128**) or 2D matrix symbols (**GS1 DataMatrix**).
+                </p>
+                <div class="space-y-2 text-xs font-mono bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-700">
+                    <p class="font-semibold text-slate-500 border-b border-slate-200 pb-1 mb-1">Target Application Identifiers:</p>
+                    <div class="flex items-center"><span class="text-indigo-600 font-bold mr-2">AI (11):</span> Mfg Date (YYMMDD)</div>
+                    <div class="flex items-center"><span class="text-emerald-600 font-bold mr-2">AI (17):</span> Exp Date (YYMMDD)</div>
+                </div>
+                <p class="text-xs text-amber-600 mt-4 bg-amber-50 border border-amber-200 p-2.5 rounded-xl">
+                    <strong>Note:</strong> Standard retail barcodes (UPC/EAN) do not contain date strings and will return an extraction error.
+                </p>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-2">Engine Status</h3>
+                <div class="text-xs font-mono space-y-1 text-slate-500">
+                    <p>Core Matrix Decoder: <span class="text-emerald-600 font-semibold">ZXing Engine Online</span></p>
+                    
+                </div>
+            </div>
+        </div>
+
+        <div class="md:col-span-2 space-y-6">
+            
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <h2 class="text-lg font-bold text-slate-900 mb-4">Ingest Live Barcode Graphic</h2>
+                
+                <div class="border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-slate-100 rounded-xl p-8 text-center transition-colors relative cursor-pointer group">
+                    <input type="file" id="barcode-upload" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <div class="space-y-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-slate-400 group-hover:text-indigo-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
+                        </svg>
+                        <p class="text-sm font-semibold text-slate-700">Upload or snap image of target barcode</p>
+                        <p class="text-xs text-slate-400">Processes digital images directly inside browser instance</p>
+                    </div>
+                </div>
+
+                <div id="preview-wrapper" class="mt-4 hidden border border-slate-200 rounded-xl p-3 bg-white flex items-center justify-between">
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                        <img id="image-preview" src="#" alt="Upload Source" class="h-14 w-14 object-cover rounded-lg border border-slate-200">
+                        <div class="truncate">
+                            <p id="file-name" class="text-xs font-semibold text-slate-700 truncate">target_image.png</p>
+                            <p id="file-size" class="text-[10px] text-slate-400">0 KB</p>
+                        </div>
+                    </div>
+                    <button id="clear-btn" class="text-xs font-semibold text-rose-600 hover:text-rose-700 px-3 py-1.5 hover:bg-rose-50 rounded-lg transition-colors">Clear Input</button>
+                </div>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                <div class="px-6 py-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
+                    <h3 class="font-bold text-white tracking-wide">Decoded Barcode Matrix Data</h3>
+                    <div id="badge-mode" class="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-slate-800 text-slate-400 border border-slate-700">Awaiting Data</div>
+                </div>
+
+                <div class="p-6 space-y-6">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider mb-2">Raw Decoded Payload String</label>
+                        <div id="raw-payload" class="w-full bg-slate-950 text-slate-400 font-mono text-sm p-4 rounded-xl border border-slate-800 min-h-12 flex items-center break-all">
+                            No image analyzed yet. Upload a data stream.
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        
+                        <div class="border border-slate-200 rounded-xl p-4 bg-white shadow-xs">
+                            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Manufacture Date (AI 11)</div>
+                            <div id="mfg-date" class="text-xl font-mono font-bold text-slate-300">-- / -- / ----</div>
+                            <div id="mfg-raw" class="text-[10px] text-slate-400 font-mono mt-1">Raw: --</div>
+                        </div>
+
+                        <div class="border border-slate-200 rounded-xl p-4 bg-white shadow-xs">
+                            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Expiry Date (AI 17)</div>
+                            <div id="exp-date" class="text-xl font-mono font-bold text-slate-300">-- / -- / ----</div>
+                            <div id="exp-raw" class="text-[10px] text-slate-400 font-mono mt-1">Raw: --</div>
+                        </div>
+
+                    </div>
+
+                    <div class="border border-slate-200 bg-slate-50 rounded-xl p-4">
+                        <span class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Internal Pipeline Log</span>
+                        <div id="pipeline-logs" class="text-xs font-mono text-slate-600 space-y-1">
+                            <p class="text-slate-400">> Standing by. Upload an image file containing a valid barcode.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        const fileInput = document.getElementById('barcode-upload');
+        const imgPreview = document.getElementById('image-preview');
+        const previewWrapper = document.getElementById('preview-wrapper');
+        const fileNameDisp = document.getElementById('file-name');
+        const fileSizeDisp = document.getElementById('file-size');
+        const clearBtn = document.getElementById('clear-btn');
+        
+        const rawPayloadBox = document.getElementById('raw-payload');
+        const badgeMode = document.getElementById('badge-mode');
+        const pipelineLogs = document.getElementById('pipeline-logs');
+        
+        const mfgDateText = document.getElementById('mfg-date');
+        const mfgRawText = document.getElementById('mfg-raw');
+        const expDateText = document.getElementById('exp-date');
+        const expRawText = document.getElementById('exp-raw');
+
+        // Instantiate the MultiFormatReader to handle both 1D and 2D variants
+        const codeReader = new ZXing.BrowserMultiFormatReader();
+
+        fileInput.addEventListener('change', event => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            resetOutputWorkspace();
+            
+            fileNameDisp.textContent = file.name;
+            fileSizeDisp.textContent = (file.size / 1024).toFixed(2) + " KB";
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imgPreview.src = e.target.result;
+                previewWrapper.classList.remove('hidden');
+                executeBarcodeAnalysis(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        clearBtn.addEventListener('click', () => {
+            fileInput.value = '';
+            previewWrapper.classList.add('hidden');
+            imgPreview.src = '#';
+            resetOutputWorkspace();
+        });
+
+        function resetOutputWorkspace() {
+            rawPayloadBox.textContent = "System awaiting file ingestion...";
+            rawPayloadBox.className = "w-full bg-slate-950 text-slate-400 font-mono text-sm p-4 rounded-xl border border-slate-800 min-h-12 flex items-center break-all";
+            
+            badgeMode.textContent = "Awaiting Data";
+            badgeMode.className = "text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-slate-800 text-slate-400 border border-slate-700";
+            
+            mfgDateText.textContent = "-- / -- / ----";
+            mfgDateText.className = "text-xl font-mono font-bold text-slate-300";
+            mfgRawText.textContent = "Raw: --";
+            
+            expDateText.textContent = "-- / -- / ----";
+            expDateText.className = "text-xl font-mono font-bold text-slate-300";
+            expRawText.textContent = "Raw: --";
+            
+            pipelineLogs.innerHTML = `<p class="text-slate-400">> System reset. Standing by for file input.</p>`;
+        }
+
+        function appendLog(message, type = 'info') {
+            const logRow = document.createElement('p');
+            if (type === 'error') logRow.className = "text-rose-600 font-semibold";
+            else if (type === 'success') logRow.className = "text-emerald-600 font-semibold";
+            else if (type === 'warn') logRow.className = "text-amber-600 font-semibold";
+            else logRow.className = "text-slate-600";
+            
+            logRow.textContent = `> ${message}`;
+            pipelineLogs.appendChild(logRow);
+        }
+
+        function executeBarcodeAnalysis(imageSrc) {
+            pipelineLogs.innerHTML = ''; 
+            appendLog("Initializing barcode detection scan matrices...");
+
+            codeReader.decodeFromImageUrl(imageSrc).then((result) => {
+                const rawText = result.text;
+                appendLog('Successfully read raw barcode');
+                processDecodedString(rawText);
+            }).catch((err) => {
+                badgeMode.textContent = "DECODE ERROR";
+                badgeMode.className = "text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-rose-950 text-rose-400 border border-rose-800";
+                rawPayloadBox.textContent = "ERROR: Failed to read visual barcode pattern.";
+                rawPayloadBox.className = "w-full bg-slate-950 text-rose-400 font-mono text-sm p-4 rounded-xl border border-slate-800 min-h-12 flex items-center break-all";
+                
+                appendLog("Direct barcode decoding failed.", 'error');
+                appendLog("Ensure the barcode is well-lit, sharp, and has clear matrix edges.", 'info');
+            });
+        }
+
+        // True parsing architecture against the scanned string
+        function processDecodedString(text) {
+            rawPayloadBox.textContent = text;
+            rawPayloadBox.className = "w-full bg-slate-950 text-indigo-400 font-mono text-sm p-4 rounded-xl border border-slate-800 min-h-12 flex items-center break-all";
+            
+            badgeMode.textContent = "DECODED SUCCESSFULLY";
+            badgeMode.className = "text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-indigo-950 text-indigo-400 border border-indigo-800";
+
+            // Normalize brackets if scanner embeds data inside formatting brackets like (11) and (17)
+            let normalizedText = text.replace(/\((11)\)/g, '11').replace(/\((17)\)/g, '17');
+            
+            let mfgFound = false;
+            let expFound = false;
+
+            // Look for AI '11' followed exactly by 6 numeric digits (YYMMDD)
+            const mfgMatch = normalizedText.match(/11(\d{6})/);
+            if (mfgMatch && mfgMatch[1]) {
+                displayParsedDate(mfgMatch[1], 'mfg');
+                mfgFound = true;
+            }
+
+            // Look for AI '17' followed exactly by 6 numeric digits (YYMMDD)
+            const expMatch = normalizedText.match(/17(\d{6})/);
+            if (expMatch && expMatch[1]) {
+                displayParsedDate(expMatch[1], 'exp');
+                expFound = true;
+            }
+
+            if (!mfgFound && !expFound) {
+                appendLog("Barcode string resolved cleanly, but no GS1 Application Identifiers for Manufacture Date (11) or Expiry Date (17) were found.", "warn");
+            }
+        }
+
+        function displayParsedDate(rawYYMMDD, targetField) {
+            const yy = parseInt(rawYYMMDD.substring(0, 2), 10);
+            const mm = rawYYMMDD.substring(2, 4);
+            const dd = rawYYMMDD.substring(4, 6);
+            
+            // Assume 2000-series baseline century mapping context
+            const fullYear = 2000 + yy;
+            const formattedDate = `${dd} / ${mm} / ${fullYear}`;
+
+            if (targetField === 'mfg') {
+                mfgDateText.textContent = formattedDate;
+                mfgDateText.className = "text-xl font-mono font-bold text-indigo-600";
+                mfgRawText.textContent = `Extracted from AI (11) -> ${rawYYMMDD}`;
+                appendLog(`[FOUND] Manufacture Date parsed: ${formattedDate}`, 'success');
+            } else if (targetField === 'exp') {
+                expDateText.textContent = formattedDate;
+                expDateText.className = "text-xl font-mono font-bold text-emerald-600";
+                expRawText.textContent = `Extracted from AI (17) -> ${rawYYMMDD}`;
+                appendLog(`[FOUND] Expiry Date parsed: ${formattedDate}`, 'success');
+            }
+        }
+    </script>
+</body>
+</html>

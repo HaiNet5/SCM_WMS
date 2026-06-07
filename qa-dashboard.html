@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise WMS Data Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/clusterize.js/0.18.0/clusterize.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clusterize.js/0.18.0/clusterize.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        .clusterize-scroll { max-height: 420px; overflow: auto; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen antialiased selection:bg-indigo-600 selection:text-white">
+
+    <div class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-xs backdrop-blur-md bg-white/95">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">System Environment Session:</span>
+                <span id="session-badge" class="text-xs px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/60 rounded-md font-bold uppercase">Admin View</span>
+            </div>
+            
+            
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
+        
+        <header class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Stream Ingestion Portal</h1>
+                <p id="role-description" class="text-slate-500 text-xs mt-1 max-w-xl">Full configuration layout access. Upload raw stock streams, build system validation rules, and export layout models.</p>
+            </div>
+            
+            <div id="admin-downloads" class="flex gap-2 flex-wrap">
+                <button onclick="downloadSampleCSV()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-xs">
+                    📥 Download Sample Template
+                </button>
+            </div>
+        </header>
+
+        <div id="step-upload" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-10 text-center">
+            <div id="drop-zone" class="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-16 hover:bg-indigo-50/20 transition-all cursor-pointer group">
+                <input type="file" id="file-input" accept=".csv" class="hidden">
+                <div class="mx-auto h-14 w-14 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-105 transition-transform border border-indigo-100">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                </div>
+                <p class="text-base font-bold text-slate-800">Select or drop target inventory CSV dataset</p>
+                <p class="text-slate-400 text-xs mt-1 max-w-xs mx-auto">Processes big data streams smoothly without browser lag.</p>
+                <button class="mt-4 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs transition">Browse Local Drive</button>
+            </div>
+        </div>
+
+        <div id="operator-date-panel" class="hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+            <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">📅 Operator Contextual Date Target Window</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Specify baseline chronological restrictions before committing streaming line files to backend inventory indexes.</p>
+                </div>
+                <span id="op-file-badge" class="text-[11px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200">file.csv</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-600 uppercase tracking-wider mb-1 text-[10px]">Filter Parameter Target Alignment:</label>
+                    <select id="op-date-target" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-800 focus:outline-hidden focus:border-indigo-500 shadow-2xs font-semibold">
+                        <option value="mfg">Manufacturing Date</option>
+                        <option value="exp">Expiry Date</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-600 uppercase tracking-wider mb-1 text-[10px]">Start Target Threshold:</label>
+                    <input type="date" id="op-start-date" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-1.5 text-slate-800 focus:outline-hidden focus:border-indigo-500 shadow-2xs">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-600 uppercase tracking-wider mb-1 text-[10px]">End Target Threshold:</label>
+                    <input type="date" id="op-end-date" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-1.5 text-slate-800 focus:outline-hidden focus:border-indigo-500 shadow-2xs">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2 text-xs font-bold">
+                <button onclick="resetImporter()" class="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition">Cancel Reset</button>
+                <button onclick="startStreamingPipeline()" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition shadow-xs">Execute Pipeline Processing</button>
+            </div>
+        </div>
+
+        <div id="step-config" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 md:p-8 space-y-6">
+            <div class="border-b border-slate-100 pb-4">
+                <h2 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">🛠️ Admin Settings & Controls Console</h2>
+                <p class="text-xs text-slate-500 mt-1">Configure user-facing app column visibility layouts and match specific operational date windows.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                    <div>
+                        <h3 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Visibility Controls</h3>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Determine which columns will render inside the live app viewer.</p>
+                    </div>
+                    <div class="space-y-3 bg-white p-4 rounded-lg border border-slate-200/60 text-xs shadow-2xs">
+                        <label class="flex items-center justify-between cursor-pointer p-1 rounded-sm hover:bg-slate-50">
+                            <span class="font-medium text-slate-700">Display Barcode (EAN Column)</span>
+                            <input type="checkbox" id="show-col-ean" checked class="w-4 h-4 text-indigo-600 border-slate-300 rounded-sm focus:ring-indigo-500">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer p-1 rounded-sm hover:bg-slate-50">
+                            <span class="font-medium text-slate-700">Display Manufacturing Date Column</span>
+                            <input type="checkbox" id="show-col-mfg" checked class="w-4 h-4 text-indigo-600 border-slate-300 rounded-sm focus:ring-indigo-500">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer p-1 rounded-sm hover:bg-slate-50">
+                            <span class="font-medium text-slate-700">Display Expiry Date Column</span>
+                            <input type="checkbox" id="show-col-exp" checked class="w-4 h-4 text-indigo-600 border-slate-300 rounded-sm focus:ring-indigo-500">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                    <div>
+                        <h3 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Operational Date Filter Window</h3>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Filter records based on target date bounds. Rows falling outside remain omitted.</p>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                        <div class="sm:col-span-3">
+                            <label class="block font-bold text-slate-600 uppercase tracking-wider mb-1 text-[10px]">Target Calendar Column Alignment:</label>
+                            <select id="filter-date-target" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:outline-hidden focus:border-indigo-500 shadow-2xs">
+                                <option value="mfg">Manufacturing Date</option>
+                                <option value="exp">Expiry Date</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-600 uppercase tracking-wider mb-1 text-[10px]">Start Date Boundary:</label>
+                            <input type="date" id="filter-start-date" class="w-full bg-white border border-slate-300 rounded-lg p-1.5 text-slate-800 focus:outline-hidden focus:border-indigo-500 shadow-2xs">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block font-bold text-slate-600 uppercase tracking-wider mb-1 text-[10px]">End Date Boundary:</label>
+                            <input type="date" id="filter-end-date" class="w-full bg-white border border-slate-300 rounded-lg p-1.5 text-slate-800 focus:outline-hidden focus:border-indigo-500 shadow-2xs">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 border-t border-slate-100 pt-4 text-xs font-bold">
+                <button onclick="resetImporter()" class="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition">Cancel Reset</button>
+                <button onclick="startStreamingPipeline()" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition shadow-xs">Execute Pipeline Processing</button>
+            </div>
+        </div>
+
+        <div id="step-loading" class="hidden bg-white rounded-2xl border border-slate-200 shadow-xs p-12 text-center space-y-4">
+            <div class="animate-spin inline-block w-9 h-9 border-3 border-indigo-600 border-t-transparent text-indigo-600 rounded-full"></div>
+            <h3 class="text-base font-bold text-slate-800">Executing Background Thread Processing...</h3>
+            <p class="text-xs text-slate-500">Indexed <span id="load-count" class="font-bold text-indigo-600">0</span> database records smoothly...</p>
+        </div>
+
+        <div id="step-preview" class="hidden space-y-4">
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs"><span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">Document Lines</span><span id="stat-total" class="text-xl font-black text-slate-900">0</span></div>
+                <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 shadow-2xs"><span class="text-[10px] text-indigo-600 uppercase font-extrabold block tracking-wider">Parsed Dataset</span><span id="stat-filtered" class="text-xl font-black text-indigo-600">0</span></div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs"><span class="text-[10px] text-emerald-600 uppercase font-extrabold block tracking-wider">Passed Rules</span><span id="stat-valid" class="text-xl font-black text-emerald-600">0</span></div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs"><span class="text-[10px] text-rose-600 uppercase font-extrabold block tracking-wider">Rejected Failures</span><span id="stat-errors" class="text-xl font-black text-rose-600">0</span></div>
+            </div>
+
+            <div id="workspace-control-bar" class="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex flex-col lg:flex-row items-stretch lg:items-center gap-4 justify-between">
+                
+                <div class="flex-1 relative">
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Search Real-time Records by Warehouse ID (WID):</label>
+                    <div class="relative">
+                        <input type="text" id="wid-search-input" oninput="executeCombinedWorkspaceFilters()" placeholder="Filter lines by WID string (e.g. ZONE-X)..." class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg pl-3 pr-10 py-2 text-xs focus:outline-hidden focus:border-indigo-500 font-mono shadow-2xs">
+                        <div class="absolute right-3 top-2.5 text-slate-400">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="w-full sm:w-64">
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Isolate Validation Logs:</label>
+                    <select id="log-status-filter" onchange="executeCombinedWorkspaceFilters()" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-semibold text-slate-700 focus:outline-hidden focus:border-indigo-500 shadow-2xs">
+                        <option value="all">📊 Show All Records</option>
+                        <option value="cleared">🟢 Show Cleared Rows Only (✓)</option>
+                        <option value="errors">🔴 Show Error Failures Only (⚠)</option>
+                    </select>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-end">
+                    <div class="text-left sm:text-right text-xs text-slate-500 font-medium bg-slate-50 border px-3 py-2 rounded-lg border-slate-200 whitespace-nowrap">
+                        Showing <span id="stat-search-match" class="font-bold text-indigo-600">0</span> of <span id="stat-search-total" class="text-slate-700">0</span> rows
+                    </div>
+                    <button onclick="downloadFilteredReportCSV()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm whitespace-nowrap">
+                        💾 Download Searched Report (.csv)
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+                <div class="px-4 py-2.5 bg-slate-50 text-xs text-slate-500 border-b border-slate-200 flex justify-between items-center flex-wrap gap-2">
+                    <span id="active-filter-badge" class="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 border border-indigo-100 rounded">Filter Logic Active Monitor</span>
+                    <span class="font-mono text-[10px] bg-slate-100 px-2 py-0.5 text-slate-600 rounded border border-slate-200">Virtual List Engine (Lag-Free)</span>
+                </div>
+
+                <div class="bg-slate-100/80 font-bold text-[11px] uppercase tracking-wider text-slate-600 flex border-b border-slate-200">
+                    <div class="p-3 w-16 text-center border-r border-slate-200 text-slate-400 bg-slate-50">Row</div>
+                    <div class="p-3 w-1/4">Warehouse ID (WID)</div>
+                    <div id="th-ean" class="p-3 w-1/4">Barcode (EAN)</div>
+                    <div id="th-mfg" class="p-3 w-1/6">Mfg Date</div>
+                    <div id="th-exp" class="p-3 w-1/6">Expiry Date</div>
+                    <div class="p-3 flex-1 text-rose-700 bg-rose-50/20">Validation Logs</div>
+                </div>
+
+                <div id="scrollArea" class="clusterize-scroll custom-scrollbar bg-white">
+                    <div id="contentArea" class="clusterize-content divide-y divide-slate-100">
+                        </div>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-2xs text-xs font-bold">
+                <button onclick="backToSettings()" class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition shadow-2xs">
+                    ‹ Adjust Layout & Selection Settings
+                </button>
+                <div class="flex gap-3 items-center">
+                    <button onclick="resetImporter()" class="px-3 py-2 text-slate-500 hover:text-slate-800 transition">Reset Portal</button>
+                    <button id="commit-btn" onclick="commitInBatches()" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs transition"></button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let currentRole = "admin"; 
+        let selectedFile = null;
+        let fileHeaders = [];
+        let cleanValidRows = [];
+        
+        let datasetMasterMemoryIndex = [];
+        let virtualizedHtmlRows = [];
+        let clusterizeInstance = null;
+
+        // Configuration Memory Mappings
+        let computedMapping = { wid: -1, ean: -1, mfg: -1, exp: -1 };
+        let activeVisibility = { ean: true, mfg: true, exp: true };
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-indigo-500', 'bg-indigo-50/10'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/10'); });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/10');
+            if (e.dataTransfer.files.length) inspectFileHeaders(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) inspectFileHeaders(e.target.files[0]);
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            switchSessionRole('usr');
+        });
+
+        function switchSessionRole(role) {
+            currentRole = role;
+            const badge = document.getElementById('session-badge');
+            const desc = document.getElementById('role-description');
+            const adminDownloads = document.getElementById('admin-downloads');
+            
+            resetImporter();
+
+            if (role === 'admin') {
+                badge.textContent = "Admin View";
+                badge.className = "text-xs px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/60 rounded-md font-bold uppercase";
+                desc.textContent = "Full configuration layout access. Upload raw stock streams, build system validation rules, and export layout models.";
+                adminDownloads.classList.remove('hidden');
+
+                document.getElementById('btn-role-admin').className = "px-4 py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-slate-800 shadow-xs border border-slate-200/40";
+                document.getElementById('btn-role-user').className = "px-4 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-500 hover:text-slate-800";
+            } else {
+                badge.textContent = "Operator Mode";
+                badge.className = "text-xs px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200/60 rounded-md font-bold uppercase";
+                desc.textContent = "Production upload workspace. Submit warehouse entry files directly under streamlined target calendar conditions.";
+                adminDownloads.classList.add('hidden');
+
+                document.getElementById('btn-role-admin').className = "px-4 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-500 hover:text-slate-800";
+                document.getElementById('btn-role-user').className = "px-4 py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-slate-800 shadow-xs border border-slate-200/40";
+            }
+        }
+
+        function inspectFileHeaders(file) {
+            selectedFile = file;
+            Papa.parse(file, {
+                preview: 1,
+                complete: function(results) {
+                    fileHeaders = results.data[0];
+                    autoDetectHeaderPositions();
+                    
+                    if (currentRole === 'admin') {
+                        document.getElementById('step-upload').classList.add('hidden');
+                        document.getElementById('step-config').classList.remove('hidden');
+                    } else {
+                        document.getElementById('step-upload').classList.add('hidden');
+                        document.getElementById('op-file-badge').textContent = file.name;
+                        document.getElementById('operator-date-panel').classList.remove('hidden');
+                        activeVisibility = { ean: true, mfg: true, exp: true };
+                    }
+                }
+            });
+        }
+
+        function autoDetectHeaderPositions() {
+            computedMapping = { wid: -1, ean: -1, mfg: -1, exp: -1 };
+            fileHeaders.forEach((header, index) => {
+                const h = header.toLowerCase().replace(/[^a-z0-9]/g, '');
+                
+                if (h.includes('wid') || h.includes('serial') || h.includes('unit')) computedMapping.wid = index;
+                if (h.includes('ean') || h.includes('barcode') || h.includes('product')) computedMapping.ean = index;
+                if (h.includes('mfg') || h.includes('manufacture') || h.includes('manufacturing')) computedMapping.mfg = index;
+                if (h.includes('exp') || h.includes('expiry') || h.includes('bestbefore')) computedMapping.exp = index;
+            });
+        }
+
+        function startStreamingPipeline() {
+            if (computedMapping.wid === -1 || computedMapping.ean === -1) {
+                alert("Auto Detection Error: Could not locate standard identity columns (WID/Serial and Barcode/EAN) from file headers.");
+                return;
+            }
+
+            let filterTarget, startVal, endVal;
+
+            if (currentRole === 'admin') {
+                activeVisibility.ean = document.getElementById('show-col-ean').checked;
+                activeVisibility.mfg = document.getElementById('show-col-mfg').checked;
+                activeVisibility.exp = document.getElementById('show-col-exp').checked;
+
+                filterTarget = document.getElementById('filter-date-target').value;
+                startVal = document.getElementById('filter-start-date').value;
+                endVal = document.getElementById('filter-end-date').value;
+            } else {
+                filterTarget = document.getElementById('op-date-target').value;
+                startVal = document.getElementById('op-start-date').value;
+                endVal = document.getElementById('op-end-date').value;
+            }
+            
+            const startDate = startVal ? new Date(startVal) : null;
+            const endDate = endVal ? new Date(endVal) : null;
+
+            document.getElementById('operator-date-panel').classList.add('hidden');
+            document.getElementById('step-config').classList.add('hidden');
+            document.getElementById('step-loading').classList.remove('hidden');
+
+            document.getElementById('th-ean').style.display = activeVisibility.ean ? '' : 'none';
+            document.getElementById('th-mfg').style.display = activeVisibility.mfg ? '' : 'none';
+            document.getElementById('th-exp').style.display = activeVisibility.exp ? '' : 'none';
+
+            let totalRowCount = 0;
+            let withinRangeCount = 0;
+            let validCount = 0;
+            let errorCount = 0;
+            
+            cleanValidRows = [];
+            datasetMasterMemoryIndex = []; 
+            virtualizedHtmlRows = [];
+            const seenWids = new Set();
+
+            // Clear input states
+            document.getElementById('wid-search-input').value = "";
+            document.getElementById('log-status-filter').value = "all";
+
+            Papa.parse(selectedFile, {
+                worker: true,
+                header: false,
+                skipEmptyLines: true,
+                chunkSize: 1024 * 1024 * 5,
+                chunk: function(results) {
+                    results.data.forEach((row) => {
+                        totalRowCount++;
+                        if (totalRowCount === 1) return;
+
+                        const wid = computedMapping.wid !== -1 && row[computedMapping.wid] ? row[computedMapping.wid].trim() : '';
+                        const ean = computedMapping.ean !== -1 && row[computedMapping.ean] ? row[computedMapping.ean].trim() : '';
+                        const mfg = computedMapping.mfg !== -1 && row[computedMapping.mfg] ? row[computedMapping.mfg].trim() : '';
+                        const exp = computedMapping.exp !== -1 && row[computedMapping.exp] ? row[computedMapping.exp].trim() : '';
+
+                        const targetDateStr = (filterTarget === 'mfg') ? mfg : exp;
+                        const parsedTargetDate = targetDateStr ? parseDateHeuristic(targetDateStr) : null;
+
+                        if (startDate || endDate) {
+                            if (!parsedTargetDate) return; 
+                            if (startDate && parsedTargetDate < startDate) return;
+                            if (endDate && parsedTargetDate > endDate) return;
+                        }
+
+                        withinRangeCount++;
+                        let errors = [];
+
+                        if (!wid) errors.push("Missing WID Token");
+                        else if (seenWids.has(wid)) errors.push("Duplicate Serial Reference (WID)");
+                        else seenWids.add(wid);
+
+                        if (!ean) errors.push("Missing Product EAN");
+                        else if (!/^\d+$/.test(ean)) errors.push("Non-numeric Barcode Format");
+
+                        const hasErrors = errors.length > 0;
+                        if (hasErrors) errorCount++; else {
+                            validCount++;
+                            cleanValidRows.push({ wid, ean, mfg, exp });
+                        }
+
+                        const rowClass = hasErrors ? "bg-rose-50/70 hover:bg-rose-100/60 flex text-xs text-slate-700" : "hover:bg-slate-50 flex text-xs text-slate-700";
+                        const statusCol = hasErrors ? `<span class="text-rose-600 font-bold">${errors.join(' | ')}</span>` : `<span class="text-emerald-600 font-semibold flex items-center gap-1">✓ Cleared</span>`;
+
+                        const displayEan = activeVisibility.ean ? `<div class="p-3 w-1/4 font-mono text-slate-500">${escapeHtml(ean)}</div>` : '';
+                        const displayMfg = activeVisibility.mfg ? `<div class="p-3 w-1/6 font-mono text-slate-500">${escapeHtml(mfg || '—')}</div>` : '';
+                        const displayExp = activeVisibility.exp ? `<div class="p-3 w-1/6 font-mono text-slate-500">${escapeHtml(exp || '—')}</div>` : '';
+
+                        const htmlString = `
+                            <div class="${rowClass}">
+                                <div class="p-3 w-16 text-center text-slate-400 font-mono border-r border-slate-200 bg-slate-50/50">${totalRowCount}</div>
+                                <div class="p-3 w-1/4 font-semibold text-slate-900">${escapeHtml(wid)}</div>
+                                ${displayEan}
+                                ${displayMfg}
+                                ${displayExp}
+                                <div class="p-3 flex-1 text-[11px]">${statusCol}</div>
+                            </div>`;
+                        
+                        datasetMasterMemoryIndex.push({
+                            widLower: wid.toLowerCase(),
+                            hasErrors: hasErrors,
+                            rawObj: { rowNum: totalRowCount, wid, ean, mfg, exp, status: hasErrors ? errors.join(' | ') : 'Cleared' },
+                            html: htmlString
+                        });
+
+                        virtualizedHtmlRows.push(htmlString);
+                    });
+                    document.getElementById('load-count').textContent = totalRowCount.toLocaleString();
+                },
+                complete: function() {
+                    document.getElementById('stat-total').textContent = (totalRowCount - 1).toLocaleString();
+                    document.getElementById('stat-filtered').textContent = withinRangeCount.toLocaleString();
+                    document.getElementById('stat-valid').textContent = validCount.toLocaleString();
+                    document.getElementById('stat-errors').textContent = errorCount.toLocaleString();
+
+                    document.getElementById('stat-search-match').textContent = withinRangeCount.toLocaleString();
+                    document.getElementById('stat-search-total').textContent = withinRangeCount.toLocaleString();
+
+                    const activeFieldLabel = filterTarget === 'mfg' ? 'Mfg Date' : 'Expiration Date';
+                    document.getElementById('active-filter-badge').textContent = (startVal || endVal)
+                        ? `Timeframe Boundaries Filter Active (${activeFieldLabel}: ${startVal || 'Min'} thru ${endVal || 'Max'})`
+                        : "Full Import Mode active (No timeline limits assigned)";
+
+                    if (clusterizeInstance) clusterizeInstance.destroy();
+                    clusterizeInstance = new Clusterize({
+                        rows: virtualizedHtmlRows,
+                        scrollId: 'scrollArea',
+                        contentId: 'contentArea',
+                        rows_in_block: 50,
+                        blocks_in_cluster: 4
+                    });
+
+                    document.getElementById('commit-btn').textContent = `Commit ${validCount.toLocaleString()} Verified Records`;
+                    
+                    document.getElementById('step-loading').classList.add('hidden');
+                    document.getElementById('step-preview').classList.remove('hidden');
+                }
+            });
+        }
+
+        // 🆕 NEW COMBINED MATRIX FILTER CONTROLLER
+        // Coordinates text query searches and log validation status options into a single layout flow
+        function executeCombinedWorkspaceFilters() {
+            const query = document.getElementById('wid-search-input').value.trim().toLowerCase();
+            const logStatus = document.getElementById('log-status-filter').value; // 'all', 'cleared', 'errors'
+            
+            let filteredStringsArray = [];
+            let length = datasetMasterMemoryIndex.length;
+
+            for (let i = 0; i < length; i++) {
+                const item = datasetMasterMemoryIndex[i];
+                
+                // 1. Evaluate WID Search Match Condition
+                const matchesQuery = !query || item.widLower.includes(query);
+                
+                // 2. Evaluate Log Validation Status Selection Condition
+                let matchesStatus = false;
+                if (logStatus === 'all') matchesStatus = true;
+                else if (logStatus === 'cleared' && !item.hasErrors) matchesStatus = true;
+                else if (logStatus === 'errors' && item.hasErrors) matchesStatus = true;
+
+                // Combine results
+                if (matchesQuery && matchesStatus) {
+                    filteredStringsArray.push(item.html);
+                }
+            }
+
+            clusterizeInstance.update(filteredStringsArray);
+            document.getElementById('stat-search-match').textContent = filteredStringsArray.length.toLocaleString();
+        }
+
+        // EXPORT FEATURE: Packages only actively selected rows from workspace view directly into local spreadsheet file
+        function downloadFilteredReportCSV() {
+            const query = document.getElementById('wid-search-input').value.trim().toLowerCase();
+            const logStatus = document.getElementById('log-status-filter').value;
+            
+            let matchedRecords = [];
+            for (let i = 0; i < datasetMasterMemoryIndex.length; i++) {
+                const item = datasetMasterMemoryIndex[i];
+                const matchesQuery = !query || item.widLower.includes(query);
+                
+                let matchesStatus = false;
+                if (logStatus === 'all') matchesStatus = true;
+                else if (logStatus === 'cleared' && !item.hasErrors) matchesStatus = true;
+                else if (logStatus === 'errors' && item.hasErrors) matchesStatus = true;
+
+                if (matchesQuery && matchesStatus) {
+                    matchedRecords.push(item.rawObj);
+                }
+            }
+
+            if (matchedRecords.length === 0) {
+                alert("No records found matching your active filter criteria to export into a spreadsheet report.");
+                return;
+            }
+
+            // Construct structured data headers dynamically based on configuration panel layouts
+            let reportHeaders = ["Original_Row_Index", "Warehouse_ID_WID"];
+            if (activeVisibility.ean) reportHeaders.push("Barcode_EAN");
+            if (activeVisibility.mfg) reportHeaders.push("Manufacturing_Date");
+            if (activeVisibility.exp) reportHeaders.push("Expiry_Date");
+            reportHeaders.push("Validation_Status_Logs");
+
+            let csvLines = [reportHeaders.join(",")];
+
+            matchedRecords.forEach(item => {
+                let lineParts = [item.rowNum, `"${item.wid.replace(/"/g, '""')}"`];
+                if (activeVisibility.ean) lineParts.push(`"${item.ean.replace(/"/g, '""')}"`);
+                if (activeVisibility.mfg) lineParts.push(`"${item.mfg.replace(/"/g, '""')}"`);
+                if (activeVisibility.exp) lineParts.push(`"${item.exp.replace(/"/g, '""')}"`);
+                lineParts.push(`"${item.status.replace(/"/g, '""')}"`);
+                
+                csvLines.push(lineParts.join(","));
+            });
+
+            // Deliver output blob download structure smoothly
+            const reportBlob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const downloadAnchor = document.createElement("a");
+            downloadAnchor.href = URL.createObjectURL(reportBlob);
+            
+            const timestamp = new Date().toISOString().slice(0,10);
+            const userRoleLabel = currentRole === 'admin' ? 'admin' : 'operator';
+            downloadAnchor.setAttribute("download", `wms_log_report_${userRoleLabel}_${logStatus}_${timestamp}.csv`);
+            
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            document.body.removeChild(downloadAnchor);
+        }
+
+        function parseDateHeuristic(dateStr) {
+            if (!dateStr) return null;
+            const timestamp = Date.parse(dateStr.trim());
+            return isNaN(timestamp) ? null : new Date(timestamp);
+        }
+
+        function commitInBatches() {
+            const batchSize = 5000;
+            const totalRecords = cleanValidRows.length;
+            
+            alert(`WMS Connection Synchronized.\nInjecting ${totalRecords.toLocaleString()} rows in batch increments of ${batchSize} directly to repository layers.`);
+            resetImporter();
+        }
+
+        function backToSettings() {
+            document.getElementById('step-preview').classList.add('hidden');
+            if (currentRole === 'admin') {
+                document.getElementById('step-config').classList.remove('hidden');
+            } else {
+                document.getElementById('operator-date-panel').classList.remove('hidden');
+            }
+        }
+
+        function resetImporter() {
+            if (clusterizeInstance) clusterizeInstance.destroy();
+            selectedFile = null; fileHeaders = []; cleanValidRows = []; virtualizedHtmlRows = []; datasetMasterMemoryIndex = []; fileInput.value = '';
+            
+            document.getElementById('filter-start-date').value = '';
+            document.getElementById('filter-end-date').value = '';
+            document.getElementById('op-start-date').value = '';
+            document.getElementById('op-end-date').value = '';
+            
+            document.getElementById('step-preview').classList.add('hidden');
+            document.getElementById('step-config').classList.add('hidden');
+            document.getElementById('operator-date-panel').classList.add('hidden');
+            document.getElementById('step-upload').classList.remove('hidden');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function downloadSampleCSV() {
+            const csvContent = "data:text/csv;charset=utf-8,Unit_WID,EAN_Barcode,Manufacturing_Date,Exp_Date\n"
+                + "WID-EST-PRIMA1,5012345678900,2024-01-10,2026-01-10\n"
+                + "WID-EST-PRIMA2,ABC-ERROR-123,2025-03-15,2027-03-15\n"; // Added one error row to test out logs filter instantly
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "standard_wms_template.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+    </script>
+</body>
+</html>
